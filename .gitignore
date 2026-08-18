@@ -4,6 +4,7 @@ __pycache__/
 .pytest_cache/
 .env
 config.local.yaml
+validation_analysis.json
 *.log
 .DS_Store
 # Keep the initial config template tracked; runtime state under data/ is intentionally versioned.
