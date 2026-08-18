@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.env
+config.local.yaml
+*.log
+.DS_Store
+# Keep the initial config template tracked; runtime state under data/ is intentionally versioned.

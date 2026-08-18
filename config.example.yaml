@@ -1,0 +1,105 @@
+# Copy to config.yaml and adjust values for your account and risk profile.
+# Secrets must be supplied through environment variables, never in this file.
+exchange:
+  id: binance
+  market_type: spot
+  quote: USDT
+  symbols:
+    - BTC/USDT
+    - ETH/USDT
+    - BNB/USDT
+    - SOL/USDT
+    - XRP/USDT
+    - DOGE/USDT
+    - ADA/USDT
+    - AVAX/USDT
+    - LINK/USDT
+    - TON/USDT
+  scan_limit: 10
+  timeframes:
+    entry: 15m
+    confirmation: 1h
+    bias: 4h
+  candles: 250
+
+strategy:
+  min_confluence: 4
+  min_confidence: 65
+  ema_fast: 50
+  ema_slow: 200
+  rsi_period: 14
+  atr_period: 14
+  atr_stop_multiplier: 1.5
+  atr_target_multiplier: 3.0
+  volume_window: 20
+  volume_spike_multiplier: 1.2
+  high_impact_news_window_minutes: 240
+
+risk:
+  # These values are intentionally configurable and generic; they are not tied to any firm.
+  initial_balance: 10000
+  current_balance: 10000
+  risk_per_trade_pct: 1.0
+  max_risk_per_trade_pct: 2.0
+  daily_loss_limit_pct: 5.0
+  max_drawdown_pct: 10.0
+  max_open_trades: 5
+  cooldown_minutes: 60
+
+news:
+  enabled: true
+  rss_urls:
+    - https://www.coindesk.com/arc/outboundfeeds/rss/
+    - https://cointelegraph.com/rss
+    - https://decrypt.co/feed
+  max_items: 40
+  lookback_hours: 4
+  high_impact_keywords:
+    - hack
+    - exploit
+    - lawsuit
+    - regulation
+    - regulator
+    - sec
+    - etf
+    - fed
+    - interest rate
+    - bankruptcy
+    - insolvency
+    - delist
+    - ban
+    - war
+  positive_keywords:
+    - approval
+    - inflow
+    - adoption
+    - partnership
+    - bullish
+    - rally
+    - upgrade
+    - launch
+    - growth
+  negative_keywords:
+    - hack
+    - exploit
+    - fraud
+    - outflow
+    - bearish
+    - crash
+    - lawsuit
+    - ban
+    - bankruptcy
+    - delist
+
+notifications:
+  telegram_enabled: true
+  discord_enabled: true
+  send_no_signal_summary: false
+  disclaimer: "এটি আর্থিক পরামর্শ নয়; শুধুমাত্র বিশ্লেষণ-ভিত্তিক সিগন্যাল। নিজস্ব গবেষণা ও ঝুঁকি ব্যবস্থাপনা করুন।"
+
+storage:
+  data_dir: data
+  signals_file: data/signals.jsonl
+  trades_file: data/trades.json
+  performance_file: data/performance.json
+  max_log_rows: 5000

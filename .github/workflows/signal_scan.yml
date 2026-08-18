@@ -1,0 +1,72 @@
+name: Crypto Signal Scan
+
+on:
+  workflow_dispatch:
+  schedule:
+    # GitHub may introduce a small scheduling delay; do not use this for execution-critical trading.
+    - cron: "*/15 * * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: crypto-signal-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONUNBUFFERED: "1"
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      EXCHANGE_API_KEY: ${{ secrets.EXCHANGE_API_KEY }}
+      EXCHANGE_API_SECRET: ${{ secrets.EXCHANGE_API_SECRET }}
+      ACCOUNT_BALANCE: ${{ secrets.ACCOUNT_BALANCE }}
+      INITIAL_BALANCE: ${{ secrets.INITIAL_BALANCE }}
+      RISK_PER_TRADE_PCT: ${{ secrets.RISK_PER_TRADE_PCT }}
+      DAILY_LOSS_LIMIT_PCT: ${{ secrets.DAILY_LOSS_LIMIT_PCT }}
+      MAX_DRAWDOWN_PCT: ${{ secrets.MAX_DRAWDOWN_PCT }}
+      MAX_OPEN_TRADES: ${{ secrets.MAX_OPEN_TRADES }}
+      MIN_CONFIDENCE: ${{ secrets.MIN_CONFIDENCE }}
+      MIN_CONFLUENCE: ${{ secrets.MIN_CONFLUENCE }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip && pip install -r requirements.txt
+
+      - name: Run scanner
+        run: PYTHONPATH=src python -m signalbot.runner scan --config config.yaml
+
+      - name: Upload scan logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: signal-data-${{ github.run_id }}
+          path: data/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Commit signal logs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "No data changes to commit."
+          else
+            git commit -m "chore: update signal logs [skip ci]"
+            git push
+          fi

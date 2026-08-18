@@ -1,0 +1,6 @@
+ccxt>=4.4.0,<5
+numpy>=1.26,<3
+pandas>=2.2,<3
+PyYAML>=6.0,<7
+requests>=2.32,<3
+pytest>=8.0,<9
