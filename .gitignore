@@ -5,6 +5,7 @@ __pycache__/
 .env
 config.local.yaml
 validation_analysis.json
+advanced_validation.json
 *.log
 .DS_Store
 # Keep the initial config template tracked; runtime state under data/ is intentionally versioned.
