@@ -20,6 +20,11 @@ def _env_bool(name: str, default: bool) -> bool:
     return str(value).lower() == "true" if value not in (None, "") else default
 
 
+def _env_int(name: str, default: int) -> int:
+    value = os.getenv(name)
+    return int(value) if value not in (None, "") else default
+
+
 def load_config(path: str | Path = DEFAULT_CONFIG) -> dict[str, Any]:
     """Load YAML configuration and apply safe environment overrides."""
     config_path = Path(path)
@@ -48,9 +53,9 @@ def load_config(path: str | Path = DEFAULT_CONFIG) -> dict[str, Any]:
     risk["risk_per_trade_pct"] = _env_float("RISK_PER_TRADE_PCT", float(risk.get("risk_per_trade_pct", 1.0)))
     risk["daily_loss_limit_pct"] = _env_float("DAILY_LOSS_LIMIT_PCT", float(risk.get("daily_loss_limit_pct", 5.0)))
     risk["max_drawdown_pct"] = _env_float("MAX_DRAWDOWN_PCT", float(risk.get("max_drawdown_pct", 10.0)))
-    risk["max_open_trades"] = int(os.getenv("MAX_OPEN_TRADES", risk.get("max_open_trades", 5)))
-    strategy["min_confidence"] = int(os.getenv("MIN_CONFIDENCE", strategy.get("min_confidence", 65)))
-    strategy["min_confluence"] = int(os.getenv("MIN_CONFLUENCE", strategy.get("min_confluence", 4)))
+    risk["max_open_trades"] = _env_int("MAX_OPEN_TRADES", int(risk.get("max_open_trades", 5)))
+    strategy["min_confidence"] = _env_int("MIN_CONFIDENCE", int(strategy.get("min_confidence", 65)))
+    strategy["min_confluence"] = _env_int("MIN_CONFLUENCE", int(strategy.get("min_confluence", 4)))
     exchange["id"] = os.getenv("EXCHANGE_ID", exchange.get("id", "binance"))
     notifications["telegram_enabled"] = _env_bool("TELEGRAM_ENABLED", bool(notifications.get("telegram_enabled", True)))
     notifications["discord_enabled"] = _env_bool("DISCORD_ENABLED", bool(notifications.get("discord_enabled", True)))
