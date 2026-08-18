@@ -1,0 +1,11 @@
+{
+  "closed_trades": 0,
+  "losses": 0,
+  "net_r": 0,
+  "paper_trade_only": true,
+  "period": "2026-W34",
+  "sample_status": "insufficient_sample",
+  "signals_total": 0,
+  "win_rate_pct": 0.0,
+  "wins": 0
+}
