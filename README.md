@@ -1,8 +1,12 @@
 # Automated Crypto Signal Bot
 
-এটি একটি explainable, GitHub Actions-চালিত crypto market signal generation system। প্রতি ১৫ মিনিটে workflow চালু হয়ে configured crypto pairs-এর multi-timeframe OHLCV data সংগ্রহ করে, EMA/RSI/MACD/ATR/volume confluence বিশ্লেষণ করে, সাম্প্রতিক RSS crypto news-এর sentiment ও high-impact event filter প্রয়োগ করে এবং risk checks পাস করা setup হলে structured signal Telegram ও Discord-এ পাঠায়।
+> **বর্তমান অবস্থা: কোনো strategy live capital-এর জন্য validated নয়।**
+>
+> **⚠️ PAPER-TRADE ONLY — NOT VALIDATED — DO NOT USE REAL CAPITAL.** এই repository কেবল research ও paper-trading instrumentation-এর জন্য। এটি আর্থিক পরামর্শ নয় এবং কোনো profit বা accuracy guarantee করে না।
 
-> **Disclaimer:** এটি আর্থিক পরামর্শ নয়; শুধুমাত্র বিশ্লেষণ-ভিত্তিক সিগন্যাল। কোনো trade নেওয়ার আগে নিজস্ব গবেষণা, paper trading এবং স্বাধীন risk assessment করুন। এই repository কোনো নির্দিষ্ট prop firm-এর API, rule বা challenge-এর সঙ্গে যুক্ত নয়।
+এটি একটি explainable, GitHub Actions-চালিত crypto market signal generation system। প্রতি ১৫ মিনিটে workflow চালু হয়ে configured crypto pairs-এর multi-timeframe OHLCV data সংগ্রহ করে, EMA/RSI/MACD/ATR/volume confluence বিশ্লেষণ করে, সাম্প্রতিক RSS crypto news-এর sentiment ও high-impact event filter প্রয়োগ করে এবং risk checks পাস করা setup হলে structured **paper signal** Telegram ও Discord-এ পাঠায়।
+
+> **Safety boundary:** কোনো নতুন feature বা strategy backtest, ablation, final holdout এবং frozen paper-trade gate পাস না করা পর্যন্ত “advanced”, “high accuracy” বা live-trading-ready হিসেবে label করা যাবে না। এই bot কোনো order placement করে না।
 
 ## কী কী অন্তর্ভুক্ত আছে
 

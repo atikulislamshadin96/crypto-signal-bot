@@ -82,3 +82,67 @@ def test_context_missingness_is_not_fabricated():
     snapshot = context_feature_snapshot(context)
     assert all(value is None for value in snapshot.values())
     assert context_coverage(context) == 0.0
+
+
+def test_paper_trade_closes_on_next_closed_candle():
+    from signalbot.runner import _update_open_trades
+
+    class FakeExchange:
+        def fetch_ohlcv(self, symbol, timeframe, limit):
+            return [
+                [1_000, 100, 101, 99, 100, 10],
+                [901_000, 100, 111, 99, 109, 10],  # closed candle hits LONG TP
+                [1_801_000, 109, 110, 108, 109, 10],  # forming candle is ignored
+            ]
+
+    trades = [{
+        "signal_id": "paper-1",
+        "symbol": "BTC/USDT",
+        "side": "LONG",
+        "timeframe": "15m",
+        "entry": 100.0,
+        "stop_loss": 95.0,
+        "take_profit": 110.0,
+        "position_size": 1.0,
+        "risk_amount": 5.0,
+        "opened_at": "1970-01-01T00:00:00+00:00",
+        "status": "OPEN",
+    }]
+    changed = _update_open_trades(trades, FakeExchange(), {"paper_trading": {"timeout_candles": 8}})
+    assert changed is True
+    assert trades[0]["status"] == "TP_HIT"
+    assert trades[0]["result_r"] == 2.0
+
+
+def test_feature_archive_is_append_only(tmp_path):
+    from signalbot.storage import append_jsonl_unbounded
+
+    archive = tmp_path / "feature_archive.jsonl"
+    append_jsonl_unbounded(archive, {"timestamp": "t1", "symbol": "BTC/USDT"})
+    append_jsonl_unbounded(archive, {"timestamp": "t2", "symbol": "ETH/USDT"})
+    rows = archive.read_text(encoding="utf-8").splitlines()
+    assert len(rows) == 2
+    assert '"timestamp": "t1"' in rows[0]
+    assert '"timestamp": "t2"' in rows[1]
+
+
+def test_period_summary_marks_small_sample_as_insufficient():
+    from signalbot.storage import build_period_summary
+
+    summary = build_period_summary([], "2026-08-18")
+    assert summary["paper_trade_only"] is True
+    assert summary["sample_status"] == "insufficient_sample"
+    assert summary["closed_trades"] == 0
+
+
+def test_research_candidates_are_not_production_enabled():
+    from signalbot.research_candidates import candidate_registry, funding_mean_reversion_feature
+
+    registry = candidate_registry()
+    assert len(registry) >= 4
+    assert all(item["production_enabled"] is False for item in registry)
+    assert all(item["status"] == "not yet tested" for item in registry)
+
+    funding = pd.Series([0.001 * i for i in range(30)])
+    feature = funding_mean_reversion_feature(funding, window=10)
+    assert feature.iloc[:10].isna().all()

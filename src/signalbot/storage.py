@@ -26,6 +26,13 @@ def append_jsonl(path: str | Path, row: dict[str, Any], max_rows: int = 5000) ->
     file_path.write_text("\n".join(json.dumps(item, ensure_ascii=False, sort_keys=True) for item in rows) + "\n", encoding="utf-8")
 
 
+def append_jsonl_unbounded(path: str | Path, row: dict[str, Any]) -> None:
+    """Append one immutable JSONL record without pruning historical archive rows."""
+    file_path = ensure_parent(path)
+    with file_path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
+
+
 def write_json(path: str | Path, payload: Any) -> None:
     file_path = ensure_parent(path)
     file_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -51,6 +58,23 @@ def append_csv(path: str | Path, row: dict[str, Any]) -> None:
         if not exists:
             writer.writeheader()
         writer.writerow(flattened)
+
+
+def build_period_summary(trades: list[dict[str, Any]], period: str) -> dict[str, Any]:
+    """Return a compact paper-trading summary for a named reporting period."""
+    closed = [trade for trade in trades if trade.get("status") in {"TP_HIT", "SL_HIT", "TIMEOUT", "CLOSED"}]
+    wins = [trade for trade in closed if float(trade.get("result_r", 0) or 0) > 0]
+    return {
+        "paper_trade_only": True,
+        "period": period,
+        "signals_total": len(trades),
+        "closed_trades": len(closed),
+        "wins": len(wins),
+        "losses": len(closed) - len(wins),
+        "win_rate_pct": round(len(wins) / len(closed) * 100, 2) if closed else 0.0,
+        "net_r": round(sum(float(t.get("result_r", 0) or 0) for t in closed), 3),
+        "sample_status": "insufficient_sample" if len(closed) < 30 else "observed_sample",
+    }
 
 
 def build_performance(trades: list[dict[str, Any]]) -> dict[str, Any]:

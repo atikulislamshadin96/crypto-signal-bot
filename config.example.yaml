@@ -69,6 +69,11 @@ fusion:
     order_book: 0.35
     macro: 0.25
 
+paper_trading:
+  enabled: true
+  version: v1.0-paper
+  timeout_candles: 8
+
 risk:
   # These values are intentionally configurable and generic; they are not tied to any firm.
   initial_balance: 10000
@@ -129,11 +134,14 @@ notifications:
   telegram_enabled: true
   discord_enabled: true
   send_no_signal_summary: false
-  disclaimer: "এটি আর্থিক পরামর্শ নয়; শুধুমাত্র গবেষণা-ভিত্তিক সিগন্যাল। নিজস্ব গবেষণা ও ঝুঁকি ব্যবস্থাপনা করুন। বর্তমানে কোনো proven live edge দাবি করা হচ্ছে না।"
+  disclaimer: "⚠️ PAPER-TRADE ONLY — NOT VALIDATED — DO NOT USE REAL CAPITAL. এটি আর্থিক পরামর্শ নয়; গবেষণা ও paper-trading-এর জন্য মাত্র।"
 
 storage:
   data_dir: data
   signals_file: data/signals.jsonl
   trades_file: data/trades.json
   performance_file: data/performance.json
+  feature_archive_file: data/feature_archive.jsonl
+  daily_summary_file: data/summary_daily.json
+  weekly_summary_file: data/summary_weekly.json
   max_log_rows: 5000
