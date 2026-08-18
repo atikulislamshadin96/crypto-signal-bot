@@ -6,6 +6,10 @@ from .models import Signal
 def format_signal(signal: Signal, disclaimer: str) -> str:
     factors = ", ".join(signal.factors)
     news = " | ".join(signal.news_context) if signal.news_context else "No relevant high-impact news"
+    sources = ", ".join(
+        f"{name}:{'ok' if details.get('available') else 'missing'}"
+        for name, details in signal.data_sources.items()
+    ) or "none"
     return (
         f"🚨 CRYPTO SIGNAL — {signal.side}\n"
         f"Symbol: {signal.symbol}\n"
@@ -15,11 +19,15 @@ def format_signal(signal: Signal, disclaimer: str) -> str:
         f"Take Profit: {signal.take_profit}\n"
         f"Risk:Reward: 1:{signal.risk_reward}\n"
         f"Confidence: {signal.confidence}/100\n"
+        f"Fusion score: {signal.fusion_score:.3f} | model: heuristic_untrained\n"
+        f"Fusion probability: {signal.fusion_probability:.1%} | context coverage: {signal.context_coverage:.1%}\n"
         f"Confluence ({signal.confluence_count}): {factors}\n"
         f"Trend: {signal.trend} | News sentiment: {signal.sentiment}\n"
         f"Position size (units): {signal.position_size}\n"
         f"Risk amount: {signal.risk_amount}\n"
-        f"News context: {news}\n\n"
+        f"News context: {news}\n"
+        f"Data sources: {sources}\n"
+        f"Research status: context-gated heuristic; no proven live edge\n\n"
         f"Disclaimer: {disclaimer}"
     )
 

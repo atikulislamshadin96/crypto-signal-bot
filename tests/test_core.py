@@ -49,3 +49,36 @@ def test_daily_loss_guard():
     allowed, reason = can_open_signal(signal, trades, state, config)
     assert allowed is False
     assert "Daily loss" in reason
+
+
+
+def test_context_fusion_is_explainable_and_coverage_aware():
+    from signalbot.fusion import score_context
+
+    config = {
+        "fusion": {
+            "enabled": True,
+            "min_feature_coverage": 0.5,
+            "min_score": -0.5,
+            "weights": {"derivatives": 0.4, "order_book": 0.35, "macro": 0.25},
+        }
+    }
+    context = {
+        "derivatives": {"available": True, "funding_rate": -0.0003, "open_interest_change_pct": 2.0, "long_short_ratio": 0.8},
+        "order_book": {"available": True, "imbalance": 0.35, "spread_bps": 2.0, "bid_wall_ratio": 2.5, "ask_wall_ratio": 1.0},
+        "macro": {"available": True, "btc_dominance": 55.0, "market_cap_change_24h_pct": 1.0, "stablecoin_supply_change_7d_pct": 0.4, "dxy": {"available": False}},
+    }
+    result = score_context(context, "LONG", config, "ETH/USDT")
+    assert result.coverage >= 0.5
+    assert result.eligible is True
+    assert result.model_source == "heuristic_untrained"
+    assert "order_book_imbalance" in result.contributions
+
+
+def test_context_missingness_is_not_fabricated():
+    from signalbot.context import context_coverage, context_feature_snapshot
+
+    context = {"derivatives": {"available": False}, "order_book": {"available": False}, "macro": {"available": False}}
+    snapshot = context_feature_snapshot(context)
+    assert all(value is None for value in snapshot.values())
+    assert context_coverage(context) == 0.0

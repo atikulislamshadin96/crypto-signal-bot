@@ -1,0 +1,22 @@
+# External data-source notes for Master Prompt #4
+
+Captured 2026-08-18. These notes preserve source provenance for the feasibility audit; they are not claims that every source is free or suitable for historical signal validation.
+
+| Source | URL | Evidence captured | Implementation implication |
+|---|---|---|---|
+| Binance USDⓈ-M Futures market-data docs | https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data | Official market-data documentation exists for futures products; search result identifies order-book depth and funding-rate history areas. Browser extraction was sparse/dynamic. | Public current derivatives/order-book endpoints are feasible to probe, but exact limits and historical coverage must be verified from endpoint-specific docs or response headers. Current spot scanner cannot assume futures history is available. |
+| CoinGecko Demo endpoint overview | https://docs.coingecko.com/demo/reference/endpoint-overview | Demo docs list `/global`, coin market charts, derivatives exchange data, and historical chart endpoints. Demo historical data is restricted to the past 365 days for relevant chart/history endpoints; higher limits/credits require paid plans. | Current global market context and short historical market-cap/volume series are feasible with a key, but 15m institutional-style history and free high-frequency guarantees are not established. |
+| CoinGecko data delivery | https://docs.coingecko.com/docs/data-delivery-methods | REST data delivery is available on the Demo plan; documentation advertises higher limits and credits on paid plans. | Use only as optional, rate-limited macro/context provider; record source timestamp and missingness. |
+| DefiLlama API docs | https://api-docs.defillama.com/ | Public server is `https://api.llama.fi`; docs expose historical TVL and stablecoin-related analytics, while some token/inflow endpoints are marked API Plan. Docs advertise a premium plan for higher limits. | Stablecoin aggregate supply/TVL context is feasible at daily/low-frequency cadence; wallet-level exchange netflow and dependable 15m backtest history are not established as free. |
+| FRED | https://fred.stlouisfed.org/ | Official FRED provides economic time series and downloads; exact DXY series/API-key requirements were not established from the landing page alone. | DXY is feasible as a daily macro feature only after selecting and documenting an exact series and API access method. It is not a natural 15m signal input. |
+| CoinDesk Data API search result | https://developers.coindesk.com/ | Search result advertises tick-level derivative instrument data, including trades, open interest, funding and settlement. | Treat as paid/credentialed unless a working free tier is verified; do not make it a default dependency. |
+| CryptoDataDownload | https://www.cryptodatadownload.com/api/ | Search result advertises historical OHLCV/trade data across exchanges. | Potential free historical price/trade fallback; does not solve on-chain, order-book, funding or OI history by itself. |
+
+## Strict feasibility conclusions
+
+1. Binance public derivatives and order-book snapshots are the most practical new real-time layer for a 15-minute GitHub Actions scan. They do not automatically provide a free, deep, point-in-time historical order-book dataset for honest backtesting.
+2. Funding rate and open interest are feasible as current context and possibly historical derivatives features where exchange endpoints permit; the implementation must degrade gracefully when history is missing.
+3. DefiLlama stablecoin/TVL context and CoinGecko global market context are feasible at daily/low-frequency cadence, not as high-frequency independent alpha without a stored history.
+4. Whale wallet alerts, exchange netflow and stablecoin mint/burn at wallet/entity level are not safely implementable as a free default without a provider credential or substantial chain-indexing/RPC work. They must remain optional/not-feasible-by-default rather than fabricated.
+5. Historical DXY is feasible as a daily macro feature through an official economic-data source, but its alignment to 15m entries and release timing must be point-in-time controlled.
+6. A logistic/gradient-boosting fusion layer can be implemented only as a research module with a frozen feature contract, time-series split, ablation, calibration and untouched final holdout. It must not replace the current strategy in live notifications until those gates pass.

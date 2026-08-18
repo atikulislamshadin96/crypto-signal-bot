@@ -6,6 +6,10 @@ __pycache__/
 config.local.yaml
 validation_analysis.json
 advanced_validation.json
+data/context_smoke.json
+data/architecture_validation.json
+data/fusion_model.json
+data/feature_ablation.json
 *.log
 .DS_Store
 # Keep the initial config template tracked; runtime state under data/ is intentionally versioned.

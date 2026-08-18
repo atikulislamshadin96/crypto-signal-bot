@@ -5,6 +5,8 @@ from typing import Any
 
 import pandas as pd
 
+from .context import context_coverage
+from .fusion import FEATURE_NAMES, score_context
 from .indicators import add_indicators
 from .models import NewsItem, Signal, utc_now_iso
 from .news import news_filter
@@ -15,9 +17,40 @@ def _signal_id(symbol: str, side: str, candle_time: str) -> str:
     return hashlib.sha256(raw).hexdigest()[:16]
 
 
-def generate_signal(symbol: str, frames: dict[str, pd.DataFrame], news: list[NewsItem], config: dict[str, Any]) -> Signal | None:
+def _context_sources(context: dict[str, Any]) -> dict[str, Any]:
+    return {
+        layer: {
+            "available": bool(value.get("available", False)) if isinstance(value, dict) else False,
+            "source": value.get("source") if isinstance(value, dict) else None,
+            "timestamp": value.get("timestamp") if isinstance(value, dict) else None,
+        }
+        for layer, value in context.items()
+        if layer in {"derivatives", "order_book", "macro"}
+    }
+
+
+def _context_factor_names(fusion_result: Any) -> list[str]:
+    names: list[str] = []
+    for feature in FEATURE_NAMES:
+        contribution = float(fusion_result.contributions.get(feature, 0.0))
+        if contribution >= 0.04:
+            names.append(f"context:{feature}+")
+        elif contribution <= -0.04:
+            names.append(f"context:{feature}-")
+    return names
+
+
+def generate_signal(
+    symbol: str,
+    frames: dict[str, pd.DataFrame],
+    news: list[NewsItem],
+    config: dict[str, Any],
+    context: dict[str, Any] | None = None,
+) -> Signal | None:
     strategy_cfg = config.get("strategy", {})
     risk_cfg = config.get("risk", {})
+    fusion_cfg = config.get("fusion", {})
+    context = context or {}
     entry_tf = config.get("exchange", {}).get("timeframes", {}).get("entry", "15m")
     confirmation_tf = config.get("exchange", {}).get("timeframes", {}).get("confirmation", "1h")
     bias_tf = config.get("exchange", {}).get("timeframes", {}).get("bias", "4h")
@@ -59,9 +92,16 @@ def generate_signal(symbol: str, frames: dict[str, pd.DataFrame], news: list[New
     if len(factors) < min_confluence:
         return None
 
-    blocked, context, sentiment = news_filter(symbol, side, news, config)
+    blocked, context_news, sentiment = news_filter(symbol, side, news, config)
     if blocked:
         return None
+
+    if bool(fusion_cfg.get("require_context", True)) and context_coverage(context) < float(fusion_cfg.get("min_feature_coverage", 0.5)):
+        return None
+    fusion = score_context(context, side, config, symbol)
+    if bool(fusion_cfg.get("enabled", True)) and not fusion.eligible:
+        return None
+    factors = factors + _context_factor_names(fusion)
 
     price = float(e["close"])
     atr = float(e["atr"])
@@ -80,7 +120,8 @@ def generate_signal(symbol: str, frames: dict[str, pd.DataFrame], news: list[New
     distance = abs(price - stop_loss)
     risk_amount = float(risk_cfg.get("current_balance", 10000)) * float(risk_cfg.get("risk_per_trade_pct", 1.0)) / 100
     position_size = risk_amount / distance if distance else 0.0
-    confidence = min(100, int(50 + len(factors) * 10 + (5 if sentiment == "Neutral" else 0)))
+    base_confidence = min(90, int(50 + len(factors) * 7))
+    confidence = min(100, int(base_confidence * 0.65 + fusion.probability * 100 * 0.35))
     if confidence < int(strategy_cfg.get("min_confidence", 65)):
         return None
     candle_time = str(entry.index[-1])
@@ -99,7 +140,13 @@ def generate_signal(symbol: str, frames: dict[str, pd.DataFrame], news: list[New
         factors=factors,
         trend=trend,
         sentiment=sentiment,
-        news_context=context,
+        news_context=context_news,
         position_size=round(position_size, 8),
         risk_amount=round(risk_amount, 2),
+        fusion_score=fusion.score,
+        fusion_probability=fusion.probability,
+        context_coverage=fusion.coverage,
+        feature_snapshot=fusion.to_dict(),
+        data_sources=_context_sources(context),
+        notes="Context-gated heuristic fusion; not a trained or proven live edge.",
     )

@@ -42,6 +42,11 @@ class Signal:
     news_context: list[str]
     position_size: float
     risk_amount: float
+    fusion_score: float = 0.0
+    fusion_probability: float = 0.0
+    context_coverage: float = 0.0
+    feature_snapshot: dict[str, Any] = field(default_factory=dict)
+    data_sources: dict[str, Any] = field(default_factory=dict)
     status: str = "OPEN"
     result_r: float | None = None
     closed_at: str | None = None

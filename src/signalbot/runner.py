@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import load_config
+from .context import collect_market_context, fetch_macro_context
 from .formatters import format_risk_alert, format_signal
 from .market import fetch_ohlcv, make_exchange, select_symbols
 from .models import Signal, utc_now_iso
@@ -90,6 +91,11 @@ def scan(config_path: str = "config.yaml") -> int:
         LOGGER.warning("News phase failed; continuing without news filter: %s", exc)
         news = []
     symbols = select_symbols(exchange, config)
+    try:
+        macro_context = fetch_macro_context(config)
+    except Exception as exc:
+        LOGGER.warning("Macro context phase failed; continuing without macro data: %s", exc)
+        macro_context = {"available": False, "source": "macro_bundle", "reason": type(exc).__name__}
     timeframes = config["exchange"]["timeframes"]
     limit = int(config["exchange"].get("candles", 250))
     seen: set[str] = set()
@@ -98,7 +104,8 @@ def scan(config_path: str = "config.yaml") -> int:
     for symbol in symbols:
         try:
             frames = {tf: fetch_ohlcv(exchange, symbol, tf, limit) for tf in set(timeframes.values())}
-            signal = generate_signal(symbol, frames, news, config)
+            context = collect_market_context(exchange, symbol, config, macro_context)
+            signal = generate_signal(symbol, frames, news, config, context)
             if not signal or signal.signal_id in seen:
                 continue
             seen.add(signal.signal_id)

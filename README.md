@@ -9,15 +9,17 @@
 | Component | Implementation |
 | --- | --- |
 | Market data | CCXT exchange adapter; default Binance spot public OHLCV |
+| Orthogonal context | Binance Futures funding/OI where available, exchange order-book snapshot, CoinGecko global context, DefiLlama aggregate stablecoin supply, optional FRED daily series |
 | Timeframes | Configurable entry, confirmation এবং higher-timeframe bias |
-| Strategy | EMA trend, RSI/MACD momentum, ATR exits, volume confirmation, breakout structure |
+| Strategy | Hybrid context-gated candidate generation; legacy indicators are not treated as proven alpha |
+| Fusion | Explainable bounded feature score plus offline NumPy logistic-regression trainer; no trained model ships by default |
 | News | RSS headlines, keyword sentiment, high-impact event suppression |
 | Signal | Entry, stop loss, take profit, risk-reward, confidence, confluence এবং position size |
 | Risk | Per-trade risk cap, daily loss lock, maximum drawdown pause, open-trade cap |
 | Storage | Versioned JSONL signal log, CSV export, JSON trade state ও performance summary |
 | Notifications | Telegram Bot API এবং Discord webhook; failure হলে scan চালু থাকে |
 | Automation | `.github/workflows/signal_scan.yml`, ১৫ মিনিটের cron ও manual dispatch |
-| Backtesting | `signalbot.backtest.run_backtest`-এর মাধ্যমে historical OHLCV replay |
+| Backtesting | `signalbot.backtest.run_backtest`-এর মাধ্যমে historical OHLCV replay; advanced feature ablation requires a real labelled feature panel |
 
 ## Project structure
 
@@ -31,7 +33,9 @@
 ├── src/signalbot/
 │   ├── backtest.py
 │   ├── config.py
+│   ├── context.py
 │   ├── formatters.py
+│   ├── fusion.py
 │   ├── indicators.py
 │   ├── market.py
 │   ├── models.py
@@ -41,6 +45,12 @@
 │   ├── runner.py
 │   ├── storage.py
 │   └── strategy.py
+├── FEASIBILITY_AUDIT.md
+├── ADVANCED_ARCHITECTURE_REPORT.md
+├── scripts/context_smoke_test.py
+├── scripts/architecture_validation.py
+├── scripts/train_fusion_model.py
+├── scripts/feature_ablation.py
 └── tests/
 ```
 
@@ -62,7 +72,9 @@
 | `MAX_DRAWDOWN_PCT` | Optional | Default `10.0` |
 | `MAX_OPEN_TRADES` | Optional | Default `5` |
 | `MIN_CONFIDENCE` | Optional | Default `65` |
-| `MIN_CONFLUENCE` | Optional | Default `4` |
+| `MIN_CONFLUENCE` | Optional | Default `3` in the redesigned template |
+
+Optional **Actions Variables** can override the new context gates without editing secrets: `DERIVATIVES_CONTEXT_ENABLED`, `ORDER_BOOK_CONTEXT_ENABLED`, `MACRO_CONTEXT_ENABLED`, `FUSION_ENABLED`, `REQUIRE_CONTEXT`, `MIN_FEATURE_COVERAGE` এবং `MIN_FUSION_SCORE`. Empty variables fall back to `config.yaml`. The redesigned default keeps `REQUIRE_CONTEXT=true` so missing orthogonal data cannot silently become a positive signal.
 
 Binance public market data fetch করতে সাধারণত exchange credentials দরকার হয় না। Credentials ব্যবহার করলে withdrawal permission ছাড়া আলাদা read-only API key ব্যবহার করুন। এই bot কোনো order placement করে না।
 
@@ -90,6 +102,14 @@ Local environment-এ secret দিতে হলে shell environment ব্য�
 
 সাম্প্রতিক relevant headline-এ বিপরীত sentiment অথবা high-impact keyword থাকলে candidate suppress করা হয়। News integration conservative filter হিসেবে কাজ করে; এটি কোনো headline-এর সম্পূর্ণ অর্থ, market reaction বা causality বোঝার দাবি করে না।
 
+## Redesigned context and fusion layer
+
+The runtime path collects three feasible orthogonal context groups. Binance Futures contributes current funding and open-interest context when public endpoints respond; CCXT contributes a bounded order-book snapshot with spread, depth imbalance and wall-ratio features; CoinGecko and DefiLlama contribute slow macro context such as BTC dominance, global market-cap change and aggregate stablecoin-supply change. FRED daily DXY support is optional and disabled by default until an exact series and access path are configured.
+
+The collector records source, timestamp, availability and endpoint errors. A failed or unavailable field remains missing. It is never replaced with a fabricated historical value. `fusion.py` converts side-relative context into bounded, explainable features and reports contributions, coverage and a `heuristic_untrained` model source. A real trained model can be created only from a time-ordered labelled panel with `scripts/train_fusion_model.py`; the repository does not ship fabricated labels or a production-trained model.
+
+The feasibility boundary is documented in [FEASIBILITY_AUDIT.md](FEASIBILITY_AUDIT.md). Wallet-labelled exchange netflow, whale alerts, issuer-level mint/burn attribution and historical L2/order-flow archives remain explicitly out of the default implementation because a defensible free historical source was not established.
+
 ## Risk management
 
 `risk` section-এ initial balance, current balance, per-trade risk, daily loss limit, maximum drawdown এবং maximum open trades রাখা হয়েছে। Position size হিসাব হয়:
@@ -112,7 +132,7 @@ Closed trade log-এর realized PnL থেকে daily loss এবং account e
 
 প্রতি scheduled cycle-এ OPEN trade-গুলোর latest ticker দেখে TP বা SL touch হয়েছে কিনা update করা হয়। একই candle-এ উভয় level ছোঁয়া বা intrabar sequence নির্ণয় করা যায় না; live ticker polling-এর সীমাবদ্ধতার কারণে এটি conservative production accounting নয়।
 
-## Backtesting
+## Backtesting and feature ablation
 
 Backtest module strategy-এর সরল historical replay দেয়। CSV-তে `timestamp,open,high,low,close,volume` columns থাকলে:
 
@@ -128,6 +148,15 @@ print(result)
 
 Backtest-কে out-of-sample validation, fees/slippage modelling এবং paper trading দিয়ে যাচাই করুন। Past performance future result-এর নিশ্চয়তা নয়।
 
+A live provider smoke test that does **not** claim historical performance can be run with:
+
+```bash
+PYTHONPATH=src python scripts/context_smoke_test.py --config config.yaml --symbol BTC/USDT
+PYTHONPATH=src python scripts/architecture_validation.py
+```
+
+For real labelled feature data only, train an interpretable research model with `scripts/train_fusion_model.py` and run one-feature-at-a-time chronological ablation with `scripts/feature_ablation.py`. Both scripts refuse insufficient or invalid labels; neither creates synthetic rows. The new multi-layer architecture must not be called validated until it has a point-in-time feature panel, time-ordered walk-forward evaluation, friction-aware replay and an untouched final holdout.
+
 ## GitHub Actions behavior
 
 Workflow `workflow_dispatch`-এ manually চালানো যায় এবং `*/15 * * * *` cron-এ প্রতি ১৫ মিনিটে schedule করা হয়েছে। GitHub Actions scheduled workflows কিছুটা delay হতে পারে এবং public repositories-এ inactivity বা platform policy-র কারণে pause হতে পারে। এটি execution-critical trading বা guaranteed low-latency system হিসেবে ব্যবহার করবেন না। Workflow data artifact upload করে এবং পরিবর্তিত `data/` files commit করে। একই সময়ে দুটি scan overlap না করার জন্য workflow concurrency ব্যবহার করা হয়েছে।
@@ -138,7 +167,7 @@ Workflow `workflow_dispatch`-এ manually চালানো যায় এব
 PYTHONPATH=src pytest -q
 ```
 
-Tests deterministic helper logic, risk guards এবং indicator behavior cover করে। Live exchange, RSS, Telegram ও Discord integration আলাদা external systems হওয়ায় CI-তে mock করা হয়েছে; production credentials test suite-এ প্রয়োজন নেই।
+Tests deterministic helper logic, risk guards, indicators, missingness semantics and context-fusion explainability cover করে। Live exchange, RSS, Telegram ও Discord integration আলাদা external systems হওয়ায় CI-তে mock করা হয়েছে; production credentials test suite-এ প্রয়োজন নেই। `ADVANCED_ARCHITECTURE_REPORT.md`-এ measured baseline এবং untested new-architecture gaps রাখা আছে; current provider smoke availability-কে OOS evidence হিসেবে গণনা করা হয়নি।
 
 ## Safety and limitations
 
@@ -155,3 +184,9 @@ Tests deterministic helper logic, risk guards এবং indicator behavior cover
 [4]: https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks "Discord webhooks"
 
 [5]: https://www.binance.com/en/markets "Binance markets"
+
+[6]: https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data "Binance Futures market-data documentation"
+
+[7]: https://docs.coingecko.com/demo/reference/endpoint-overview "CoinGecko Demo API endpoint overview"
+
+[8]: https://api-docs.defillama.com/ "DefiLlama API documentation"

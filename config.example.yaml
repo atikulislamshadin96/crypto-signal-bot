@@ -23,7 +23,9 @@ exchange:
   candles: 250
 
 strategy:
-  min_confluence: 4
+  # Legacy indicators remain a candidate generator only; context gates delivery.
+  mode: hybrid_context_gated
+  min_confluence: 3
   min_confidence: 65
   ema_fast: 50
   ema_slow: 200
@@ -34,6 +36,38 @@ strategy:
   volume_window: 20
   volume_spike_multiplier: 1.2
   high_impact_news_window_minutes: 240
+
+context:
+  derivatives:
+    enabled: true
+    base_url: https://fapi.binance.com
+    history_period: 15m
+  order_book:
+    enabled: true
+    levels: 50
+  macro:
+    enabled: true
+    coingecko_url: https://api.coingecko.com/api/v3/global
+    defillama_stablecoin_url: https://stablecoins.llama.fi/stablecoincharts/all
+    fred:
+      enabled: false
+      series_id: DTWEXBGS
+      csv_url: https://fred.stlouisfed.org/graph/fredgraph.csv
+
+fusion:
+  enabled: true
+  # Do not emit a signal when orthogonal context is absent.
+  require_context: true
+  min_feature_coverage: 0.50
+  min_score: 0.15
+  model_intercept: 0.0
+  model_scale: 2.0
+  # Research-only trained model path; no trained model is shipped by default.
+  model_path: data/fusion_model.json
+  weights:
+    derivatives: 0.40
+    order_book: 0.35
+    macro: 0.25
 
 risk:
   # These values are intentionally configurable and generic; they are not tied to any firm.
@@ -95,7 +129,7 @@ notifications:
   telegram_enabled: true
   discord_enabled: true
   send_no_signal_summary: false
-  disclaimer: "এটি আর্থিক পরামর্শ নয়; শুধুমাত্র বিশ্লেষণ-ভিত্তিক সিগন্যাল। নিজস্ব গবেষণা ও ঝুঁকি ব্যবস্থাপনা করুন।"
+  disclaimer: "এটি আর্থিক পরামর্শ নয়; শুধুমাত্র গবেষণা-ভিত্তিক সিগন্যাল। নিজস্ব গবেষণা ও ঝুঁকি ব্যবস্থাপনা করুন। বর্তমানে কোনো proven live edge দাবি করা হচ্ছে না।"
 
 storage:
   data_dir: data

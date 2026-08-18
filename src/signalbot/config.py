@@ -15,6 +15,11 @@ def _env_float(name: str, default: float) -> float:
     return float(value) if value not in (None, "") else default
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    return str(value).lower() == "true" if value not in (None, "") else default
+
+
 def load_config(path: str | Path = DEFAULT_CONFIG) -> dict[str, Any]:
     """Load YAML configuration and apply safe environment overrides."""
     config_path = Path(path)
@@ -32,6 +37,11 @@ def load_config(path: str | Path = DEFAULT_CONFIG) -> dict[str, Any]:
     strategy = config.setdefault("strategy", {})
     exchange = config.setdefault("exchange", {})
     notifications = config.setdefault("notifications", {})
+    context = config.setdefault("context", {})
+    derivatives = context.setdefault("derivatives", {})
+    order_book = context.setdefault("order_book", {})
+    macro = context.setdefault("macro", {})
+    fusion = config.setdefault("fusion", {})
 
     risk["current_balance"] = _env_float("ACCOUNT_BALANCE", float(risk.get("current_balance", 10000)))
     risk["initial_balance"] = _env_float("INITIAL_BALANCE", float(risk.get("initial_balance", risk["current_balance"])))
@@ -42,6 +52,13 @@ def load_config(path: str | Path = DEFAULT_CONFIG) -> dict[str, Any]:
     strategy["min_confidence"] = int(os.getenv("MIN_CONFIDENCE", strategy.get("min_confidence", 65)))
     strategy["min_confluence"] = int(os.getenv("MIN_CONFLUENCE", strategy.get("min_confluence", 4)))
     exchange["id"] = os.getenv("EXCHANGE_ID", exchange.get("id", "binance"))
-    notifications["telegram_enabled"] = os.getenv("TELEGRAM_ENABLED", str(notifications.get("telegram_enabled", True))).lower() == "true"
-    notifications["discord_enabled"] = os.getenv("DISCORD_ENABLED", str(notifications.get("discord_enabled", True))).lower() == "true"
+    notifications["telegram_enabled"] = _env_bool("TELEGRAM_ENABLED", bool(notifications.get("telegram_enabled", True)))
+    notifications["discord_enabled"] = _env_bool("DISCORD_ENABLED", bool(notifications.get("discord_enabled", True)))
+    derivatives["enabled"] = _env_bool("DERIVATIVES_CONTEXT_ENABLED", bool(derivatives.get("enabled", True)))
+    order_book["enabled"] = _env_bool("ORDER_BOOK_CONTEXT_ENABLED", bool(order_book.get("enabled", True)))
+    macro["enabled"] = _env_bool("MACRO_CONTEXT_ENABLED", bool(macro.get("enabled", True)))
+    fusion["enabled"] = _env_bool("FUSION_ENABLED", bool(fusion.get("enabled", True)))
+    fusion["require_context"] = _env_bool("REQUIRE_CONTEXT", bool(fusion.get("require_context", True)))
+    fusion["min_feature_coverage"] = _env_float("MIN_FEATURE_COVERAGE", float(fusion.get("min_feature_coverage", 0.5)))
+    fusion["min_score"] = _env_float("MIN_FUSION_SCORE", float(fusion.get("min_score", 0.15)))
     return config

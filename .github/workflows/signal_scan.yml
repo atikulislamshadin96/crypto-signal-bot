@@ -32,6 +32,13 @@ jobs:
       MAX_OPEN_TRADES: ${{ secrets.MAX_OPEN_TRADES }}
       MIN_CONFIDENCE: ${{ secrets.MIN_CONFIDENCE }}
       MIN_CONFLUENCE: ${{ secrets.MIN_CONFLUENCE }}
+      DERIVATIVES_CONTEXT_ENABLED: ${{ vars.DERIVATIVES_CONTEXT_ENABLED }}
+      ORDER_BOOK_CONTEXT_ENABLED: ${{ vars.ORDER_BOOK_CONTEXT_ENABLED }}
+      MACRO_CONTEXT_ENABLED: ${{ vars.MACRO_CONTEXT_ENABLED }}
+      FUSION_ENABLED: ${{ vars.FUSION_ENABLED }}
+      REQUIRE_CONTEXT: ${{ vars.REQUIRE_CONTEXT }}
+      MIN_FEATURE_COVERAGE: ${{ vars.MIN_FEATURE_COVERAGE }}
+      MIN_FUSION_SCORE: ${{ vars.MIN_FUSION_SCORE }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
